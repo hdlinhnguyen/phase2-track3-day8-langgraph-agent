@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LangGraph Agent Lab Visualizer</title>
+  <!-- Google Fonts: Outfit & Fira Code -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* CSS Design System - Rich Cyberpunk Dark Theme */
+    :root {
+      --bg-color: #08090f;
+      --bg-card: rgba(18, 20, 32, 0.7);
+      --bg-card-hover: rgba(26, 29, 47, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(59, 130, 246, 0.5);
+      
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      
+      --color-primary: #3b82f6;      /* Neon Blue */
+      --color-success: #10b981;      /* Neon Green */
+      --color-error: #f43f5e;        /* Neon Rose/Red */
+      --color-warning: #f59e0b;      /* Neon Amber */
+      --color-purple: #a855f7;       /* Neon Purple (Risky) */
+      
+      --shadow-primary: 0 0 15px rgba(59, 130, 246, 0.3);
+      --shadow-success: 0 0 15px rgba(16, 114, 241, 0.3);
+      --shadow-error: 0 0 15px rgba(244, 63, 94, 0.3);
+      --shadow-purple: 0 0 15px rgba(168, 85, 247, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      overflow-x: hidden;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+    }
+
+    /* Container & Layout */
+    .app-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      font-size: 28px;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 8px rgba(59, 130, 246, 0.4));
+    }
+
+    .logo-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .logo-text span {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Nav Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab-btn.active {
+      color: var(--color-primary);
+      background: rgba(59, 130, 246, 0.1);
+      border-color: rgba(59, 130, 246, 0.2);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.05);
+    }
+
+    /* Main Content Sections */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .tab-content.active {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 1024px) {
+      #visualizer-tab.active {
+        grid-template-columns: 320px 1fr 340px;
+      }
+      #report-tab.active {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* Column Styles */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .card-title i {
+      color: var(--color-primary);
+    }
+
+    /* Left Sidebar: Controls & Inputs */
+    .preset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 12px;
+      border-radius: 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .preset-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateX(4px);
+    }
+
+    .preset-btn.active {
+      border-color: var(--color-primary);
+      background: rgba(59, 130, 246, 0.08);
+      box-shadow: var(--shadow-primary);
+    }
+
+    .preset-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      width: 100%;
+    }
+
+    .badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 9px;
+    }
+
+    .badge-simple { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .badge-tool { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-risky { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+    .badge-error { background: rgba(244, 63, 94, 0.15); color: #f87171; }
+
+    .preset-title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .preset-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Custom Query Form */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    textarea {
+      width: 100%;
+      height: 80px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-main);
+      padding: 12px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    textarea:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--color-primary), #2563eb);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      filter: brightness(1.1);
+      box-shadow: var(--shadow-primary);
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+    }
+
+    /* Center: Graph Visualization Panel */
+    .graph-panel {
+      position: relative;
+      background: rgba(4, 5, 8, 0.95);
+      min-height: 580px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    /* Grid layout of nodes */
+    .nodes-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 180px);
+      grid-template-rows: repeat(4, 100px);
+      gap: 20px;
+      justify-content: center;
+      align-content: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Connections SVG layer overlay */
+    .connections-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .node {
+      background: #111322;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      cursor: default;
+      color: var(--text-muted);
+    }
+
+    .node i {
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    /* Node types/coordinates mapping */
+    .node-start { grid-column: 1; grid-row: 1; }
+    .node-intake { grid-column: 2; grid-row: 1; }
+    .node-classify { grid-column: 3; grid-row: 1; }
+    
+    .node-clarify { grid-column: 2; grid-row: 2; }
+    .node-risky_action { grid-column: 3; grid-row: 2; }
+    .node-approval { grid-column: 4; grid-row: 2; }
+    
+    .node-tool { grid-column: 4; grid-row: 3; }
+    .node-evaluate { grid-column: 3; grid-row: 3; }
+    .node-retry { grid-column: 2; grid-row: 3; }
+    
+    .node-dead_letter { grid-column: 1; grid-row: 4; }
+    .node-answer { grid-column: 2; grid-row: 4; }
+    .node-finalize { grid-column: 3; grid-row: 4; }
+    .node-end { grid-column: 4; grid-row: 4; }
+
+    /* Active Node States */
+    .node.active {
+      color: var(--text-main);
+      background: var(--color-primary);
+      border-color: #60a5fa;
+      box-shadow: 0 0 25px rgba(59, 130, 246, 0.7);
+      z-index: 10;
+      animation: pulseGlow 1.5s infinite alternate;
+    }
+
+    @keyframes pulseGlow {
+      from {
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+        border-color: #3b82f6;
+      }
+      to {
+        box-shadow: 0 0 28px rgba(59, 130, 246, 0.85);
+        border-color: #93c5fd;
+      }
+    }
+
+    .node.visited {
+      border-color: rgba(59, 130, 246, 0.5);
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+    }
+
+    .node.node-start.active, .node.node-start.visited {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: #fff;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+    }
+
+    .node.node-end.active, .node.node-end.visited {
+      background: rgba(168, 85, 247, 0.2);
+      border-color: var(--color-purple);
+      color: #e9d5ff;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+    }
+
+    .node.node-approval.active {
+      background: var(--color-purple);
+      border-color: #d8b4fe;
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.8);
+      color: white;
+    }
+
+    .node.node-retry.active {
+      background: var(--color-warning);
+      border-color: #fde047;
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.8);
+      color: black;
+    }
+
+    .node.node-dead_letter.active {
+      background: var(--color-error);
+      border-color: #fda4af;
+      box-shadow: 0 0 25px rgba(244, 63, 94, 0.8);
+      color: white;
+    }
+
+    /* Simulation HUD Panel overlay */
+    .hud-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .hud-badge {
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    /* HITL Interactive Panel */
+    .hitl-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      width: calc(100% - 40px);
+      max-width: 480px;
+      background: rgba(22, 12, 38, 0.95);
+      border: 2px solid var(--color-purple);
+      box-shadow: var(--shadow-purple);
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .hitl-panel.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .hitl-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: #e9d5ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hitl-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-approve {
+      background: var(--color-success);
+      color: #052e16;
+      flex: 1;
+    }
+
+    .btn-reject {
+      background: var(--color-error);
+      color: #4c0519;
+      flex: 1;
+    }
+
+    /* Right Sidebar: Console & JSON state output */
+    .console-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      height: 100%;
+    }
+
+    .console-logs {
+      background: #040508;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      height: 240px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .log-entry {
+      line-height: 1.4;
+      border-left: 2px solid var(--color-primary);
+      padding-left: 8px;
+    }
+
+    .log-entry.info { border-color: var(--color-primary); color: #93c5fd; }
+    .log-entry.success { border-color: var(--color-success); color: #34d399; }
+    .log-entry.warning { border-color: var(--color-warning); color: #fcd34d; }
+    .log-entry.error { border-color: var(--color-error); color: #fca5a5; }
+    .log-entry.purple { border-color: var(--color-purple); color: #e9d5ff; }
+
+    .state-viewer {
+      background: #040508;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      flex: 1;
+      height: 260px;
+      overflow-y: auto;
+      color: #60a5fa;
+    }
+
+    /* Keyframes */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Architecture / Documentation Styling */
+    .doc-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    
+    @media (min-width: 768px) {
+      .doc-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+      margin-top: 8px;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .highlight {
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    /* Metrics Ring & Indicators */
+    .metrics-row {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 0;
+    }
+
+    .metric-ring-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ring-svg {
+      width: 80px;
+      height: 80px;
+      transform: rotate(-90deg);
+    }
+
+    .ring-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.05);
+      stroke-width: 6;
+    }
+
+    .ring-active {
+      fill: none;
+      stroke: var(--color-success);
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-dasharray: 226;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s ease-out;
+    }
+
+    .ring-text {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      flex: 1;
+    }
+
+    .stat-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    /* Active path glowing marching ants animation */
+    .connections-svg path.active-flow {
+      stroke-dasharray: 8, 4;
+      animation: pathFlow 1s linear infinite;
+      stroke-width: 3;
+      filter: drop-shadow(0 0 4px var(--color-primary));
+    }
+    @keyframes pathFlow {
+      to {
+        stroke-dashoffset: -24;
+      }
+    }
+    
+    .edge-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background: #090a10;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+    .edge-label.active {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <i class="fa-solid fa-network-wired logo-icon"></i>
+        <div class="logo-text">
+          <h1>LangGraph Agent Lab</h1>
+          <span>Interactive Simulator & Visual Report</span>
+        </div>
+      </div>
+      
+      <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('visualizer')">
+          <i class="fa-solid fa-play"></i> Simulator
+        </button>
+        <button class="tab-btn" onclick="switchTab('report')">
+          <i class="fa-solid fa-file-invoice"></i> Architecture & Report
+        </button>
+      </div>
+    </header>
+
+    <!-- TAB 1: Simulator -->
+    <main id="visualizer-tab" class="tab-content active">
+      
+      <!-- Left sidebar: Controls -->
+      <section class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-sliders"></i> Presets & Configuration
+        </div>
+        
+        <div class="preset-list">
+          <label>Choose a Scenario Template:</label>
+          
+          <button class="preset-btn active" onclick="loadPreset('S01_simple')">
+            <div class="preset-meta">
+              <span class="badge badge-simple">Simple FAQ</span>
+              <span>S01</span>
+            </div>
+            <div class="preset-title">Password Reset</div>
+            <div class="preset-desc">General password FAQ query requiring no tool invocation.</div>
+          </button>
+          
+          <button class="preset-btn" onclick="loadPreset('S02_tool')">
+            <div class="preset-meta">
+              <span class="badge badge-tool">Tool Lookup</span>
+              <span>S02</span>
+            </div>
+            <div class="preset-title">Order Status Lookup</div>
+            <div class="preset-desc">Requests shipment status check. Calls database tool directly.</div>
+          </button>
+          
+          <button class="preset-btn" onclick="loadPreset('S04_risky')">
+            <div class="preset-meta">
+              <span class="badge badge-risky">Risky (HITL)</span>
+              <span>S04</span>
+            </div>
+            <div class="preset-title">Account Deletion</div>
+            <div class="preset-desc">Destructive transaction. Triggers HITL interrupt loop.</div>
+          </button>
+          
+          <button class="preset-btn" onclick="loadPreset('S05_error')">
+            <div class="preset-meta">
+              <span class="badge badge-error">Retry Loop</span>
+              <span>S05</span>
+            </div>
+            <div class="preset-title">System Error Recovery</div>
+            <div class="preset-desc">Simulates a transient server timeout. Retries & evaluates.</div>
+          </button>
+        </div>
+        
+        <div class="form-group">
+          <label for="custom-query">Custom Query Input:</label>
+          <textarea id="custom-query">How do I reset my password?</textarea>
+        </div>
+        
+        <button class="btn" id="run-btn" onclick="startSimulation()">
+          <i class="fa-solid fa-bolt"></i> Run Simulation
+        </button>
+      </section>
+
+      <!-- Center: Graph Visualization -->
+      <section class="graph-panel">
+        
+        <!-- Live HUD Status -->
+        <div class="hud-overlay">
+          <div class="hud-badge" id="hud-status">
+            <i class="fa-solid fa-circle-dot" style="color: var(--text-muted)"></i> Simulator Idle
+          </div>
+          <div class="hud-badge" id="hud-retry" style="display: none">
+            <i class="fa-solid fa-arrow-rotate-right" style="color: var(--color-warning)"></i> Attempt 0/3
+          </div>
+        </div>
+
+        <!-- SVG overlay for static connections -->
+        <svg class="connections-svg" id="svg-layer">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(255,255,255,0.2)" />
+            </marker>
+            <marker id="arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-primary)" />
+            </marker>
+            <marker id="arrow-success" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-success)" />
+            </marker>
+            <marker id="arrow-error" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-error)" />
+            </marker>
+            <marker id="arrow-warning" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-warning)" />
+            </marker>
+            <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-purple)" />
+            </marker>
+          </defs>
+        </svg>
+        <!-- Container for HTML edge labels -->
+        <div id="edge-labels-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
+
+        <!-- Nodes Display Grid -->
+        <div class="nodes-grid">
+          <div class="node node-start" id="node-__start__">
+            <i class="fa-solid fa-circle-play"></i> START
+          </div>
+          <div class="node node-intake" id="node-intake">
+            <i class="fa-solid fa-sign-in-alt"></i> Intake
+          </div>
+          <div class="node node-classify" id="node-classify">
+            <i class="fa-solid fa-filter"></i> Classify
+          </div>
+          
+          <div class="node node-clarify" id="node-clarify">
+            <i class="fa-solid fa-question-circle"></i> Clarify
+          </div>
+          <div class="node node-risky_action" id="node-risky_action">
+            <i class="fa-solid fa-shield-halved"></i> Risky Action
+          </div>
+          <div class="node node-approval" id="node-approval">
+            <i class="fa-solid fa-user-check"></i> Approval Node
+          </div>
+          
+          <div class="node node-tool" id="node-tool">
+            <i class="fa-solid fa-toolbox"></i> Tool Node
+          </div>
+          <div class="node node-evaluate" id="node-evaluate">
+            <i class="fa-solid fa-clipboard-check"></i> Evaluate Node
+          </div>
+          <div class="node node-retry" id="node-retry">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Retry Gate
+          </div>
+          
+          <div class="node node-dead_letter" id="node-dead_letter">
+            <i class="fa-solid fa-envelope-open-text"></i> Dead Letter
+          </div>
+          <div class="node node-answer" id="node-answer">
+            <i class="fa-solid fa-comment-dots"></i> Answer Node
+          </div>
+          <div class="node node-finalize" id="node-finalize">
+            <i class="fa-solid fa-flag-checkered"></i> Finalize Node
+          </div>
+          <div class="node node-end" id="node-__end__">
+            <i class="fa-solid fa-circle-stop"></i> END
+          </div>
+        </div>
+
+        <!-- Human In The Loop approval overlay panel -->
+        <div class="hitl-panel" id="hitl-panel">
+          <div class="hitl-header">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--color-purple)"></i>
+            Human Approval Intercept
+          </div>
+          <div style="font-size: 12px; line-height: 1.4;" id="hitl-message">
+            Approval required for: Execute account deletion sequence.
+          </div>
+          <div class="hitl-actions">
+            <button class="btn btn-approve" onclick="resolveHITL(true)">
+              <i class="fa-solid fa-check"></i> Approve
+            </button>
+            <button class="btn btn-reject" onclick="resolveHITL(false)">
+              <i class="fa-solid fa-xmark"></i> Reject
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Terminal Console & State Viewer -->
+      <section class="card console-panel">
+        <div class="card-title">
+          <i class="fa-solid fa-terminal"></i> Agent Logs & Events
+        </div>
+        
+        <div class="console-logs" id="console-logs">
+          <div class="log-entry info">Console ready. Click "Run Simulation" above to execute.</div>
+        </div>
+        
+        <div class="card-title" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
+          <i class="fa-solid fa-database"></i> Live State Dict
+        </div>
+        
+        <pre class="state-viewer" id="state-viewer">{}</pre>
+      </section>
+
+    </main>
+
+    <!-- TAB 2: Architecture & Report -->
+    <main id="report-tab" class="tab-content">
+      
+      <!-- Left Panel: Architecture -->
+      <section class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-sitemap"></i> Graph Architecture & State Schema
+        </div>
+        
+        <div style="font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; gap: 12px;">
+          <p>
+            The LangGraph orchestrator implements an 11-node state machine with strict type checking, resilient conditional routing, and state transition checkpointers.
+          </p>
+          
+          <h4 style="margin-top: 10px; color: var(--color-primary);">State Reducers Mapping</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Reducer Type</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="highlight">messages</td>
+                <td>Append (list[str])</td>
+                <td>Audit logs / Conversation history</td>
+              </tr>
+              <tr>
+                <td class="highlight">route</td>
+                <td>Overwrite (str)</td>
+                <td>Current path decision</td>
+              </tr>
+              <tr>
+                <td class="highlight">evaluation_result</td>
+                <td>Overwrite (str)</td>
+                <td>Retry loop evaluation</td>
+              </tr>
+              <tr>
+                <td class="highlight">approval</td>
+                <td>Overwrite (dict)</td>
+                <td>HITL reviewer and decision metadata</td>
+              </tr>
+              <tr>
+                <td class="highlight">tool_results</td>
+                <td>Append (list[str])</td>
+                <td>Preserves history of tool logs</td>
+              </tr>
+              <tr>
+                <td class="highlight">events</td>
+                <td>Append (list[dict])</td>
+                <td>Standardized audit events tracking</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4 style="margin-top: 15px; color: var(--color-primary);">Robust Self-Recovery</h4>
+          <p>
+            <strong>1. Transient Tool Failures:</strong> Evaluator node dynamically captures error streams from downstream nodes, routing the state back into the retry loop. Attempt bounds protect against endless loops.
+          </p>
+          <p>
+            <strong>2. Risky Operations:</strong> Operations classification like refunds and deletions are routed via an interrupt layer. If <code style="background: rgba(255,255,255,0.06); padding: 2px 4px; border-radius: 4px;">LANGGRAPH_INTERRUPT=true</code>, it triggers a checkpointer suspend state.
+          </p>
+        </div>
+      </section>
+
+      <!-- Right Panel: Report Metrics -->
+      <section class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-chart-simple"></i> Lab Scenario Metrics
+        </div>
+        
+        <!-- Summaries Ring -->
+        <div class="metrics-row">
+          <div class="metric-ring-container">
+            <svg class="ring-svg">
+              <circle class="ring-bg" cx="40" cy="40" r="36"></circle>
+              <circle class="ring-active" cx="40" cy="40" r="36" id="success-ring" style="stroke-dashoffset: 7.3;"></circle>
+              <text class="ring-text" x="40" y="46" text-anchor="middle" fill="white" transform="rotate(90 40 40)">96.8%</text>
+            </svg>
+            <span class="metric-label">Success Rate</span>
+          </div>
+          
+          <div class="stat-box">
+            <span class="metric-label">Scenarios Run</span>
+            <div class="stat-val">31 / 31</div>
+          </div>
+          
+          <div class="stat-box">
+            <span class="metric-label">Total Retries</span>
+            <div class="stat-val" style="color: var(--color-warning)">13</div>
+          </div>
+          
+          <div class="stat-box">
+            <span class="metric-label">Total Interrupts</span>
+            <div class="stat-val" style="color: var(--color-purple)">10</div>
+          </div>
+        </div>
+
+        <div>
+          <h4 style="margin-top: 12px; margin-bottom: 8px; color: var(--color-primary);">Validation Results</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Expected Route</th>
+                <th>Retries</th>
+                <th>Interrupts</th>
+                <th>Grade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="highlight">S01_simple</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">S02_tool</td>
+                <td>tool</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">S03_missing</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">S04_risky</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">S05_error</td>
+                <td>error</td>
+                <td>3</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">S06_delete</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">S07_dead_letter</td>
+                <td>error</td>
+                <td>1</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G01_simple</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G02_simple_nokw</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G03_simple_tricky</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G04_tool</td>
+                <td>tool</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G05_tool_nokw</td>
+                <td>tool</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G06_tool_indirect</td>
+                <td>tool</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G07_missing</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G08_missing_subtle</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G09_missing_oneword</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G10_risky_easy</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G11_risky_indirect</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G12_risky_polite</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G13_risky_imperative</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G14_risky_disguised</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G15_error_easy</td>
+                <td>error</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G16_error_nokw</td>
+                <td>error</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G17_error_narrative</td>
+                <td>error</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G18_dead</td>
+                <td>error</td>
+                <td>1</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G19_priority_risky_vs_tool</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G20_priority_risky_vs_simple</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G21_priority_tool_vs_error</td>
+                <td>tool</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-error); font-weight: bold;">FAILED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G22_priority_missing_vs_simple</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G23_long_simple</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G24_long_risky</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Tab switching logic
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.innerText.toLowerCase().includes(tabId));
+      if (activeBtn) activeBtn.classList.add('active');
+      
+      document.getElementById(`${tabId}-tab`).classList.add('active');
+      
+      if (tabId === 'visualizer') {
+        drawInitialPaths();
+      }
+    }
+
+    // Preset data mapping
+    const presets = {
+      'S01_simple': {
+        query: "How do I reset my password?",
+        route: "simple"
+      },
+      'S02_tool': {
+        query: "Please lookup order status for order 99824",
+        route: "tool"
+      },
+      'S04_risky': {
+        query: "delete user account now",
+        route: "risky"
+      },
+      'S05_error': {
+        query: "Timeout failure during database update",
+        route: "error"
+      }
+    };
+
+    function loadPreset(presetKey) {
+      document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+      
+      // Add active state to button
+      const clickedBtn = event.currentTarget;
+      if (clickedBtn) clickedBtn.classList.add('active');
+      
+      const preset = presets[presetKey];
+      document.getElementById('custom-query').value = preset.query;
+    }
+
+    // Intersection algorithm for docking points exactly at the boundaries of HTML nodes
+    function getBoxIntersection(cx, cy, w, h, tx, ty) {
+      const dx = tx - cx;
+      const dy = ty - cy;
+      if (dx === 0 && dy === 0) return { x: cx, y: cy };
+      
+      const scaleX = dx !== 0 ? Math.abs(w / dx) : Infinity;
+      const scaleY = dy !== 0 ? Math.abs(h / dy) : Infinity;
+      const scale = Math.min(scaleX, scaleY);
+      
+      return {
+        x: cx + dx * scale,
+        y: cy + dy * scale
+      };
+    }
+
+    function calculateDockPoints(el1, el2, containerRect) {
+      const rect1 = el1.getBoundingClientRect();
+      const rect2 = el2.getBoundingClientRect();
+
+      const c1x = rect1.left + rect1.width / 2 - containerRect.left;
+      const c1y = rect1.top + rect1.height / 2 - containerRect.top;
+      const c2x = rect2.left + rect2.width / 2 - containerRect.left;
+      const c2y = rect2.top + rect2.height / 2 - containerRect.top;
+
+      const w1 = rect1.width / 2;
+      const h1 = rect1.height / 2;
+      const w2 = rect2.width / 2;
+      const h2 = rect2.height / 2;
+
+      // Intersection points on the exact borders
+      const p1 = getBoxIntersection(c1x, c1y, w1, h1, c2x, c2y);
+      // Offset the target landing point slightly back by 8px to leave space for the arrowhead
+      const p2 = getBoxIntersection(c2x, c2y, w2 + 8, h2 + 8, c1x, c1y);
+
+      return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+    }
+
+    // SVG Connections logic
+    function drawInitialPaths() {
+      const svg = document.getElementById('svg-layer');
+      
+      // Preserve the <defs> block when clearing the SVG
+      const defs = svg.querySelector('defs');
+      svg.innerHTML = '';
+      if (defs) svg.appendChild(defs);
+      
+      // Clear old HTML labels
+      const labelsContainer = document.getElementById('edge-labels-container');
+      if (labelsContainer) labelsContainer.innerHTML = '';
+
+      const connections = [
+        ['__start__', 'intake'],
+        ['intake', 'classify'],
+        // Classify branches
+        ['classify', 'answer', 'simple'],
+        ['classify', 'clarify', 'missing_info'],
+        ['classify', 'risky_action', 'risky'],
+        ['classify', 'tool', 'tool'],
+        ['classify', 'retry', 'error'],
+        
+        ['clarify', 'finalize'],
+        ['risky_action', 'approval'],
+        ['approval', 'tool', 'approved'],
+        ['approval', 'clarify', 'rejected'],
+        
+        ['tool', 'evaluate'],
+        ['evaluate', 'answer', 'success'],
+        ['evaluate', 'retry', 'needs_retry'],
+        
+        ['retry', 'tool', 'retry_attempt'],
+        ['retry', 'dead_letter', 'fail'],
+        
+        ['dead_letter', 'finalize'],
+        ['answer', 'finalize'],
+        ['finalize', '__end__']
+      ];
+
+      const containerRect = document.querySelector('.graph-panel').getBoundingClientRect();
+
+      connections.forEach(conn => {
+        const fromNode = document.getElementById(`node-${conn[0]}`);
+        const toNode = document.getElementById(`node-${conn[1]}`);
+        if (!fromNode || !toNode) return;
+        
+        const pts = calculateDockPoints(fromNode, toNode, containerRect);
+        
+        // Draw elegant curve
+        const dx = pts.x2 - pts.x1;
+        const dy = pts.y2 - pts.y1;
+        
+        let pathD = '';
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Horizontal flow curve
+          const cx1 = pts.x1 + dx * 0.4;
+          const cy1 = pts.y1;
+          const cx2 = pts.x2 - dx * 0.4;
+          const cy2 = pts.y2;
+          pathD = `M ${pts.x1} ${pts.y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${pts.x2} ${pts.y2}`;
+        } else {
+          // Vertical flow curve
+          const cx1 = pts.x1;
+          const cy1 = pts.y1 + dy * 0.4;
+          const cx2 = pts.x2;
+          const cy2 = pts.y2 - dy * 0.4;
+          pathD = `M ${pts.x1} ${pts.y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${pts.x2} ${pts.y2}`;
+        }
+
+        const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathEl.setAttribute("d", pathD);
+        pathEl.setAttribute("fill", "none");
+
+        // Check if this connection is in active history
+        const activeItem = pathHistory.find(item => item.from === conn[0] && item.to === conn[1]);
+        if (activeItem) {
+          let markerId = 'arrow-active';
+          if (activeItem.color.includes('success')) markerId = 'arrow-success';
+          else if (activeItem.color.includes('error')) markerId = 'arrow-error';
+          else if (activeItem.color.includes('warning')) markerId = 'arrow-warning';
+          else if (activeItem.color.includes('purple')) markerId = 'arrow-purple';
+
+          pathEl.setAttribute("stroke", activeItem.color);
+          pathEl.setAttribute("marker-end", `url(#${markerId})`);
+          pathEl.classList.add('active-flow');
+          pathEl.style.stroke = activeItem.color;
+        } else {
+          pathEl.setAttribute("stroke", "rgba(255, 255, 255, 0.08)");
+          pathEl.setAttribute("marker-end", "url(#arrow)");
+        }
+        pathEl.setAttribute("stroke-width", activeItem ? "3" : "2");
+        
+        // Add custom identifier
+        pathEl.id = `path-${conn[0]}-${conn[1]}`;
+        svg.appendChild(pathEl);
+
+        // Add beautiful visual label for conditional branches
+        if (conn[2]) {
+          const midX = pts.x1 + dx * 0.5;
+          const midY = pts.y1 + dy * 0.5;
+
+          const label = document.createElement('div');
+          label.className = 'edge-label';
+          label.id = `label-${conn[0]}-${conn[1]}`;
+          label.style.left = `${midX}px`;
+          label.style.top = `${midY}px`;
+          label.innerText = conn[2].replace('_', ' ');
+          if (activeItem) {
+            label.classList.add('active');
+            label.style.borderColor = activeItem.color;
+            label.style.color = activeItem.color;
+          }
+          if (labelsContainer) labelsContainer.appendChild(label);
+        }
+      });
+    }
+
+    // Resize handler to adjust paths dynamically
+    window.addEventListener('resize', drawInitialPaths);
+    setTimeout(drawInitialPaths, 100);
+
+    // Live Simulator State Machine
+    let simState = {};
+    let currentStepIndex = 0;
+    let pathHistory = [];
+    let resolveHITLCallback = null;
+
+    function resetSimulationUI() {
+      pathHistory = [];
+      document.querySelectorAll('.node').forEach(node => {
+        node.classList.remove('active', 'visited');
+      });
+      drawInitialPaths();
+      document.getElementById('console-logs').innerHTML = '';
+      document.getElementById('hud-retry').style.display = 'none';
+      document.getElementById('hitl-panel').classList.remove('show');
+    }
+
+    function appendLog(message, type = 'info') {
+      const logs = document.getElementById('console-logs');
+      const log = document.createElement('div');
+      log.className = `log-entry ${type}`;
+      log.innerText = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(log);
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    function updateStateViewer() {
+      document.getElementById('state-viewer').innerText = JSON.stringify(simState, null, 2);
+    }
+
+    function animateNodeTransition(from, to, color = 'var(--color-primary)') {
+      document.getElementById(`node-${from}`).classList.remove('active');
+      document.getElementById(`node-${from}`).classList.add('visited');
+      document.getElementById(`node-${to}`).classList.add('active');
+
+      // Record path history
+      pathHistory.push({ from, to, color });
+
+      // Trigger redraw to keep all edges docked and highlight active/visited segments
+      drawInitialPaths();
+    }
+
+    // Primary Execution Function
+    async function startSimulation() {
+      const queryText = document.getElementById('custom-query').value.trim();
+      if (!queryText) {
+        alert("Please enter a query first!");
+        return;
+      }
+
+      resetSimulationUI();
+      document.getElementById('run-btn').disabled = true;
+
+      // Initial State Configuration
+      simState = {
+        query: queryText,
+        route: "",
+        evaluation_result: "",
+        pending_question: "",
+        proposed_action: "",
+        approval: null,
+        tool_results: [],
+        errors: [],
+        events: [],
+        attempt: 0,
+        max_attempts: 3
+      };
+      
+      updateStateViewer();
+      appendLog(`Starting workflow for query: "${queryText}"`, 'info');
+      
+      // Node 1: START -> intake
+      document.getElementById('node-__start__').classList.add('active');
+      await sleep(1000);
+      
+      animateNodeTransition('__start__', 'intake');
+      appendLog("Node [intake]: Trimming and normalizing query text.", 'info');
+      simState.events.push({node: "intake", event: "completed", message: "normalized"});
+      updateStateViewer();
+      await sleep(1000);
+
+      // Node 2: intake -> classify
+      animateNodeTransition('intake', 'classify');
+      appendLog("Node [classify]: Running structured classification parsing...", 'info');
+      await sleep(1200);
+
+      // Simple keyword heuristic classifier to simulate LLM logic
+      const queryLower = queryText.toLowerCase();
+      if (queryLower.includes('password') || queryLower.includes('faq')) {
+        simState.route = "simple";
+      } else if (queryLower.includes('delete') || queryLower.includes('refund') || queryLower.includes('destroy')) {
+        simState.route = "risky";
+      } else if (queryLower.includes('status') || queryLower.includes('lookup') || queryLower.includes('shipment')) {
+        simState.route = "tool";
+      } else if (queryLower.includes('timeout') || queryLower.includes('error') || queryLower.includes('fail')) {
+        simState.route = "error";
+      } else {
+        simState.route = "missing_info";
+      }
+
+      appendLog(`Classifier evaluated route = "${simState.route}"`, 'success');
+      simState.events.push({node: "classify", event: "completed", message: `route determined: ${simState.route}`});
+      updateStateViewer();
+      await sleep(1000);
+
+      // Process branches based on classify
+      if (simState.route === "simple") {
+        await runSimpleBranch();
+      } else if (simState.route === "missing_info") {
+        await runMissingInfoBranch();
+      } else if (simState.route === "risky") {
+        await runRiskyBranch();
+      } else if (simState.route === "tool") {
+        await runToolBranch();
+      } else if (simState.route === "error") {
+        await runErrorBranch();
+      }
+
+      document.getElementById('run-btn').disabled = false;
+    }
+
+    // Branch 1: Simple FAQ
+    async function runSimpleBranch() {
+      animateNodeTransition('classify', 'answer', 'var(--color-success)');
+      appendLog("Node [answer]: Creating FAQ grounded response using template.", 'info');
+      simState.final_answer = "To reset your password, please click on the 'Forgot Password' link at the login screen and follow instructions.";
+      simState.events.push({node: "answer", event: "completed", message: "answer generated"});
+      updateStateViewer();
+      await sleep(1000);
+
+      animateNodeTransition('answer', 'finalize');
+      appendLog("Node [finalize]: Auditing metrics logs and cleaning transaction scope.", 'info');
+      simState.events.push({node: "finalize", event: "completed", message: "workflow finished"});
+      updateStateViewer();
+      await sleep(1000);
+
+      animateNodeTransition('finalize', '__end__');
+      appendLog("Workflow execution finalized successfully.", 'success');
+      document.getElementById('hud-status').innerHTML = '<i class="fa-solid fa-circle-check" style="color: var(--color-success)"></i> Completed (100% Success)';
+    }
+
+    // Branch 2: Missing Information
+    async function runMissingInfoBranch() {
+      animateNodeTransition('classify', 'clarify', 'var(--color-warning)');
+      appendLog("Node [clarify]: Query too vague. Generating clarification request.", 'info');
+      simState.pending_question = "Could you please clarify which action you want to fix or provide more details?";
+      simState.final_answer = simState.pending_question;
+      simState.events.push({node: "clarify", event: "completed", message: "asked clarification"});
+      updateStateViewer();
+      await sleep(1000);
+
+      animateNodeTransition('clarify', 'finalize');
+      await sleep(1000);
+
+      animateNodeTransition('finalize', '__end__');
+      appendLog("Workflow paused. Waiting for user response.", 'warning');
+      document.getElementById('hud-status').innerHTML = '<i class="fa-solid fa-circle-exclamation" style="color: var(--color-warning)"></i> Intercepted: Missing Info';
+    }
+
+    // Branch 3: Risky (HITL Intercept)
+    async function runRiskyBranch() {
+      animateNodeTransition('classify', 'risky_action', 'var(--color-purple)');
+      appendLog("Node [risky_action]: Destructive operation. Formulating request summary.", 'info');
+      simState.proposed_action = `Perform operations: "${simState.query}"`;
+      simState.events.push({node: "risky_action", event: "completed", message: "summary formulated"});
+      updateStateViewer();
+      await sleep(1000);
+
+      // Transition to Approval node and PAUSE for user interaction
+      animateNodeTransition('risky_action', 'approval', 'var(--color-purple)');
+      appendLog("Node [approval]: Suspending execution thread. Waiting for human approval...", 'purple');
+      document.getElementById('hud-status').innerHTML = '<i class="fa-solid fa-pause" style="color: var(--color-purple)"></i> Thread Paused (HITL)';
+      
+      // Display the HITL card
+      document.getElementById('hitl-message').innerText = `Action requires authorization:\n"${simState.query}"`;
+      document.getElementById('hitl-panel').classList.add('show');
+
+      // Create interactive promise
+      const approved = await new Promise(resolve => {
+        resolveHITLCallback = resolve;
+      });
+
+      document.getElementById('hitl-panel').classList.remove('show');
+      
+      simState.approval = {
+        approved: approved,
+        reviewer: "local-user",
+        comment: approved ? "Approved via Simulator UI" : "Rejected via Simulator UI"
+      };
+      updateStateViewer();
+      
+      if (approved) {
+        appendLog("Review decision: APPROVED. Proceeding to tool execution.", 'success');
+        animateNodeTransition('approval', 'tool', 'var(--color-success)');
+        await executeMockTool();
+      } else {
+        appendLog("Review decision: REJECTED. Redirecting to clarification node.", 'error');
+        animateNodeTransition('approval', 'clarify', 'var(--color-error)');
+        simState.pending_question = "The requested deletion action was rejected by the supervisor.";
+        simState.final_answer = simState.pending_question;
+        updateStateViewer();
+        await sleep(1000);
+        
+        animateNodeTransition('clarify', 'finalize');
+        await sleep(1000);
+        animateNodeTransition('finalize', '__end__');
+        document.getElementById('hud-status').innerHTML = '<i class="fa-solid fa-circle-xmark" style="color: var(--color-error)"></i> Denied';
+      }
+    }
+
+    // Branch 4: Tool execution
+    async function runToolBranch() {
+      animateNodeTransition('classify', 'tool', 'var(--color-success)');
+      await executeMockTool();
+    }
+
+    // Tool execution helper
+    async function executeMockTool() {
+      appendLog("Node [tool]: Dispatching database query...", 'info');
+      await sleep(1200);
+      
+      simState.tool_results.push(`Successfully checked status for "${simState.query}". Result: DISPATCHED from warehouse.`);
+      simState.events.push({node: "tool", event: "completed", message: "queried DB"});
+      updateStateViewer();
+      
+      animateNodeTransition('tool', 'evaluate');
+      appendLog("Node [evaluate]: LLM-as-judge auditing tool outputs...", 'info');
+      await sleep(1000);
+      
+      simState.evaluation_result = "success";
+      updateStateViewer();
+      
+      animateNodeTransition('evaluate', 'answer', 'var(--color-success)');
+      appendLog("Node [answer]: Formulating final support response.", 'info');
+      simState.final_answer = `I checked our system for your request. It shows: DISPATCHED from warehouse.`;
+      updateStateViewer();
+      await sleep(1000);
+      
+      animateNodeTransition('answer', 'finalize');
+      await sleep(1000);
+      animateNodeTransition('finalize', '__end__');
+      appendLog("Simulation complete.", 'success');
+      document.getElementById('hud-status').innerHTML = '<i class="fa-solid fa-circle-check" style="color: var(--color-success)"></i> Completed';
+    }
+
+    // Branch 5: Error (Retry loop demo)
+    async function runErrorBranch() {
+      animateNodeTransition('classify', 'retry', 'var(--color-warning)');
+      
+      let maxAttempts = 3;
+      let attempt = 0;
+      document.getElementById('hud-retry').style.display = 'flex';
+      
+      while (attempt < maxAttempts) {
+        attempt++;
+        simState.attempt = attempt;
+        document.getElementById('hud-retry').innerText = `Attempt ${attempt}/${maxAttempts}`;
+        updateStateViewer();
+
+        animateNodeTransition(attempt === 1 ? 'retry' : 'evaluate', 'tool', 'var(--color-warning)');
+        appendLog(`[Attempt ${attempt}] Calling database tool...`, 'info');
+        await sleep(1000);
+
+        // Simulate transient error for first 2 attempts
+        if (attempt < 3) {
+          appendLog(`[Attempt ${attempt}] Tool returned transient failure: "ERROR: Connection Timeout"`, 'error');
+          simState.errors.push(`Attempt ${attempt} connection timeout.`);
+          simState.tool_results.push("ERROR: Connection Timeout");
+          updateStateViewer();
+          await sleep(1000);
+
+          animateNodeTransition('tool', 'evaluate');
+          appendLog("Node [evaluate]: Checking satisfactory criteria...", 'info');
+          await sleep(1000);
+          
+          simState.evaluation_result = "needs_retry";
+          updateStateViewer();
+          
+          animateNodeTransition('evaluate', 'retry', 'var(--color-warning)');
+          appendLog(`Node [retry]: Attempt count is ${attempt}. Retrying under threshold limit.`, 'warning');
+          await sleep(1000);
+        } else {
+          // Success on attempt 3
+          appendLog(`[Attempt ${attempt}] Tool execution succeeded!`, 'success');
+          simState.tool_results.push("Database connection established. Records updated successfully.");
+          updateStateViewer();
+          await sleep(1000);
+
+          animateNodeTransition('tool', 'evaluate');
+          await sleep(800);
+          simState.evaluation_result = "success";
+          updateStateViewer();
+
+          animateNodeTransition('evaluate', 'answer', 'var(--color-success)');
+          appendLog("Node [answer]: Creating completion response.", 'info');
+          simState.final_answer = "The system successfully resolved the timeout issue and synchronized the records.";
+          updateStateViewer();
+          await sleep(1000);
+
+          animateNodeTransition('answer', 'finalize');
+          await sleep(1000);
+          animateNodeTransition('finalize', '__end__');
+          document.getElementById('hud-status').innerHTML = '<i class="fa-solid fa-circle-check" style="color: var(--color-success)"></i> Resolved on Retry 3';
+          return;
+        }
+      }
+    }
+
+    // Action resolver for supervisor input panel
+    function resolveHITL(approved) {
+      if (resolveHITLCallback) {
+        resolveHITLCallback(approved);
+      }
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  </script>
+</body>
+</html>
