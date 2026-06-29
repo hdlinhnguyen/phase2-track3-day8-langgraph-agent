@@ -34,7 +34,8 @@ def render_report(metrics: MetricsReport) -> str:
 
 ## 1. Team / student
 
-- Name: Linh Nguyen
+- Name: Nguyen Ho Dieu Linh
+- MSV: 2A202600567
 - Repo/commit: phase2-track3-day8-langgraph-agent
 - Date: 2026-06-29
 
@@ -96,6 +97,7 @@ We implemented `SqliteSaver` in SQLite WAL mode. Every state update and transiti
 
 - **SQLite Persistence**: Implemented `SqliteSaver` checkpointer in WAL mode to persist graph execution state across restarts.
 - **Mermaid Graph Visualization**: Exported Mermaid diagram of graph transitions.
+- **Real Human-In-The-Loop (HITL) Interruption & Resume**: Implemented real `interrupt()` mechanism in `approval_node` when `LANGGRAPH_INTERRUPT=true`, fully validated end-to-end via programmatic resume using `Command(resume=...)`.
 
 ## 8. Improvement plan
 

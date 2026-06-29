@@ -40,7 +40,7 @@ OPENROUTER_API_KEY=your_openrouter_api_key
 
 ### 3. Run Grading Scenarios
 
-Execute all 7 grading scenarios from `scenarios.jsonl` sequentially using the following command:
+Execute all 31 grading scenarios from the merged `scenarios_all.jsonl` (which combines `scenarios.jsonl` and `scenarios_hidden.jsonl`) sequentially using the following command:
 
 ```bash
 LANGGRAPH_INTERRUPT=false python3 -m langgraph_agent_lab.cli run-scenarios --config configs/lab.yaml --output outputs/metrics.json
@@ -58,7 +58,7 @@ python3 -m langgraph_agent_lab.cli validate-metrics --metrics outputs/metrics.js
 
 Output:
 ```
-Metrics valid. success_rate=100.00%
+Metrics valid. success_rate=96.77%
 ```
 
 ### 5. Run Unit Tests

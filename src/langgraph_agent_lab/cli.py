@@ -8,6 +8,9 @@ from typing import Annotated
 
 import typer
 import yaml
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from .graph import build_graph
 from .metrics import MetricsReport, metric_from_state, summarize_metrics, write_metrics

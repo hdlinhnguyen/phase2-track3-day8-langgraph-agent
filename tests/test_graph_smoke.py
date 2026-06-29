@@ -11,6 +11,10 @@ import importlib.util
 import os
 
 import pytest
+from dotenv import load_dotenv
+
+load_dotenv()
+os.environ["LANGGRAPH_INTERRUPT"] = "false"
 
 from langgraph_agent_lab.graph import build_graph
 from langgraph_agent_lab.persistence import build_checkpointer
@@ -66,3 +70,55 @@ def test_graph_terminates_all_routes() -> None:
         events = result.get("events", [])
         finalize_events = [e for e in events if e.get("node") == "finalize"]
         assert finalize_events, f"Route {route.value} did not reach finalize node"
+
+
+def test_sqlite_persistence_and_resume_approval(tmp_path) -> None:
+    """Verify that SQLite checkpointer correctly persists state across interrupts and can be resumed."""
+    db_file = tmp_path / "test_checkpoints.db"
+    checkpointer = build_checkpointer("sqlite", database_url=str(db_file))
+    graph = build_graph(checkpointer=checkpointer)
+
+    # Configure graph interrupt to true
+    os.environ["LANGGRAPH_INTERRUPT"] = "true"
+
+    try:
+        scenario = Scenario(
+            id="test-risky-persistence",
+            query="Refund this customer $100",
+            expected_route=Route.RISKY
+        )
+        state = initial_state(scenario)
+        thread_id = state["thread_id"]
+        config = {"configurable": {"thread_id": thread_id}}
+
+        # Invoke the graph. It should run up to the approval node and pause.
+        final_state = graph.invoke(state, config=config)
+
+        # Inspect state. Since we hit the interrupt, final_state should have the state at the interrupt point.
+        assert final_state["proposed_action"] == "Execute action: Refund this customer $100"
+        assert final_state["approval"] is None
+
+        # Verify the next node to execute is "approval"
+        state_history = graph.get_state(config)
+        assert state_history.next == ("approval",)
+
+        # Now, resume the graph execution by sending Command(resume=...)
+        from langgraph.types import Command
+        resume_command = Command(resume={"approved": True, "reviewer": "test-admin", "comment": "approved by unit test"})
+
+        resumed_state = graph.invoke(resume_command, config=config)
+
+        # Verify the graph completed successfully after resuming
+        assert resumed_state["route"] == "risky"
+        assert resumed_state["approval"]["approved"] is True
+        assert resumed_state["approval"]["reviewer"] == "test-admin"
+        assert resumed_state["approval"]["comment"] == "approved by unit test"
+
+        # Verify it went to finalize and END
+        events = resumed_state.get("events", [])
+        finalize_events = [e for e in events if e.get("node") == "finalize"]
+        assert finalize_events
+
+    finally:
+        os.environ["LANGGRAPH_INTERRUPT"] = "false"
+

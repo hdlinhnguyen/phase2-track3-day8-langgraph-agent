@@ -401,8 +401,19 @@
       background: var(--color-primary);
       border-color: #60a5fa;
       box-shadow: 0 0 25px rgba(59, 130, 246, 0.7);
-      transform: scale(1.08);
       z-index: 10;
+      animation: pulseGlow 1.5s infinite alternate;
+    }
+
+    @keyframes pulseGlow {
+      from {
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+        border-color: #3b82f6;
+      }
+      to {
+        box-shadow: 0 0 28px rgba(59, 130, 246, 0.85);
+        border-color: #93c5fd;
+      }
     }
 
     .node.visited {
@@ -687,6 +698,43 @@
       font-weight: 700;
       color: var(--color-primary);
     }
+
+    /* Active path glowing marching ants animation */
+    .connections-svg path.active-flow {
+      stroke-dasharray: 8, 4;
+      animation: pathFlow 1s linear infinite;
+      stroke-width: 3;
+      filter: drop-shadow(0 0 4px var(--color-primary));
+    }
+    @keyframes pathFlow {
+      to {
+        stroke-dashoffset: -24;
+      }
+    }
+    
+    .edge-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background: #090a10;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+    .edge-label.active {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+    }
   </style>
 </head>
 <body>
@@ -786,8 +834,29 @@
 
         <!-- SVG overlay for static connections -->
         <svg class="connections-svg" id="svg-layer">
-          <!-- Defined dynamic path logic in JavaScript -->
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(255,255,255,0.2)" />
+            </marker>
+            <marker id="arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-primary)" />
+            </marker>
+            <marker id="arrow-success" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-success)" />
+            </marker>
+            <marker id="arrow-error" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-error)" />
+            </marker>
+            <marker id="arrow-warning" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-warning)" />
+            </marker>
+            <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-purple)" />
+            </marker>
+          </defs>
         </svg>
+        <!-- Container for HTML edge labels -->
+        <div id="edge-labels-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
 
         <!-- Nodes Display Grid -->
         <div class="nodes-grid">
@@ -952,25 +1021,25 @@
           <div class="metric-ring-container">
             <svg class="ring-svg">
               <circle class="ring-bg" cx="40" cy="40" r="36"></circle>
-              <circle class="ring-active" cx="40" cy="40" r="36" id="success-ring"></circle>
-              <text class="ring-text" x="40" y="46" text-anchor="middle" fill="white" transform="rotate(90 40 40)">100%</text>
+              <circle class="ring-active" cx="40" cy="40" r="36" id="success-ring" style="stroke-dashoffset: 7.3;"></circle>
+              <text class="ring-text" x="40" y="46" text-anchor="middle" fill="white" transform="rotate(90 40 40)">96.8%</text>
             </svg>
             <span class="metric-label">Success Rate</span>
           </div>
           
           <div class="stat-box">
             <span class="metric-label">Scenarios Run</span>
-            <div class="stat-val">7 / 7</div>
+            <div class="stat-val">31 / 31</div>
           </div>
           
           <div class="stat-box">
             <span class="metric-label">Total Retries</span>
-            <div class="stat-val" style="color: var(--color-warning)">4</div>
+            <div class="stat-val" style="color: var(--color-warning)">13</div>
           </div>
           
           <div class="stat-box">
             <span class="metric-label">Total Interrupts</span>
-            <div class="stat-val" style="color: var(--color-purple)">2</div>
+            <div class="stat-val" style="color: var(--color-purple)">10</div>
           </div>
         </div>
 
@@ -1036,6 +1105,174 @@
                 <td>0</td>
                 <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
               </tr>
+              <tr>
+                <td class="highlight">G01_simple</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G02_simple_nokw</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G03_simple_tricky</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G04_tool</td>
+                <td>tool</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G05_tool_nokw</td>
+                <td>tool</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G06_tool_indirect</td>
+                <td>tool</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G07_missing</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G08_missing_subtle</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G09_missing_oneword</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G10_risky_easy</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G11_risky_indirect</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G12_risky_polite</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G13_risky_imperative</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G14_risky_disguised</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G15_error_easy</td>
+                <td>error</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G16_error_nokw</td>
+                <td>error</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G17_error_narrative</td>
+                <td>error</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G18_dead</td>
+                <td>error</td>
+                <td>1</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G19_priority_risky_vs_tool</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G20_priority_risky_vs_simple</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G21_priority_tool_vs_error</td>
+                <td>tool</td>
+                <td>2</td>
+                <td>0</td>
+                <td style="color: var(--color-error); font-weight: bold;">FAILED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G22_priority_missing_vs_simple</td>
+                <td>missing_info</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G23_long_simple</td>
+                <td>simple</td>
+                <td>0</td>
+                <td>0</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
+              <tr>
+                <td class="highlight">G24_long_risky</td>
+                <td>risky</td>
+                <td>0</td>
+                <td>1</td>
+                <td style="color: var(--color-success); font-weight: bold;">PASSED</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1091,11 +1328,57 @@
       document.getElementById('custom-query').value = preset.query;
     }
 
+    // Intersection algorithm for docking points exactly at the boundaries of HTML nodes
+    function getBoxIntersection(cx, cy, w, h, tx, ty) {
+      const dx = tx - cx;
+      const dy = ty - cy;
+      if (dx === 0 && dy === 0) return { x: cx, y: cy };
+      
+      const scaleX = dx !== 0 ? Math.abs(w / dx) : Infinity;
+      const scaleY = dy !== 0 ? Math.abs(h / dy) : Infinity;
+      const scale = Math.min(scaleX, scaleY);
+      
+      return {
+        x: cx + dx * scale,
+        y: cy + dy * scale
+      };
+    }
+
+    function calculateDockPoints(el1, el2, containerRect) {
+      const rect1 = el1.getBoundingClientRect();
+      const rect2 = el2.getBoundingClientRect();
+
+      const c1x = rect1.left + rect1.width / 2 - containerRect.left;
+      const c1y = rect1.top + rect1.height / 2 - containerRect.top;
+      const c2x = rect2.left + rect2.width / 2 - containerRect.left;
+      const c2y = rect2.top + rect2.height / 2 - containerRect.top;
+
+      const w1 = rect1.width / 2;
+      const h1 = rect1.height / 2;
+      const w2 = rect2.width / 2;
+      const h2 = rect2.height / 2;
+
+      // Intersection points on the exact borders
+      const p1 = getBoxIntersection(c1x, c1y, w1, h1, c2x, c2y);
+      // Offset the target landing point slightly back by 8px to leave space for the arrowhead
+      const p2 = getBoxIntersection(c2x, c2y, w2 + 8, h2 + 8, c1x, c1y);
+
+      return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+    }
+
     // SVG Connections logic
     function drawInitialPaths() {
       const svg = document.getElementById('svg-layer');
-      svg.innerHTML = ''; // Clear SVG
       
+      // Preserve the <defs> block when clearing the SVG
+      const defs = svg.querySelector('defs');
+      svg.innerHTML = '';
+      if (defs) svg.appendChild(defs);
+      
+      // Clear old HTML labels
+      const labelsContainer = document.getElementById('edge-labels-container');
+      if (labelsContainer) labelsContainer.innerHTML = '';
+
       const connections = [
         ['__start__', 'intake'],
         ['intake', 'classify'],
@@ -1123,46 +1406,82 @@
         ['finalize', '__end__']
       ];
 
+      const containerRect = document.querySelector('.graph-panel').getBoundingClientRect();
+
       connections.forEach(conn => {
         const fromNode = document.getElementById(`node-${conn[0]}`);
         const toNode = document.getElementById(`node-${conn[1]}`);
         if (!fromNode || !toNode) return;
         
-        const path = drawCurveBetweenElements(fromNode, toNode);
+        const pts = calculateDockPoints(fromNode, toNode, containerRect);
+        
+        // Draw elegant curve
+        const dx = pts.x2 - pts.x1;
+        const dy = pts.y2 - pts.y1;
+        
+        let pathD = '';
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Horizontal flow curve
+          const cx1 = pts.x1 + dx * 0.4;
+          const cy1 = pts.y1;
+          const cx2 = pts.x2 - dx * 0.4;
+          const cy2 = pts.y2;
+          pathD = `M ${pts.x1} ${pts.y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${pts.x2} ${pts.y2}`;
+        } else {
+          // Vertical flow curve
+          const cx1 = pts.x1;
+          const cy1 = pts.y1 + dy * 0.4;
+          const cx2 = pts.x2;
+          const cy2 = pts.y2 - dy * 0.4;
+          pathD = `M ${pts.x1} ${pts.y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${pts.x2} ${pts.y2}`;
+        }
+
         const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        pathEl.setAttribute("d", path);
+        pathEl.setAttribute("d", pathD);
         pathEl.setAttribute("fill", "none");
-        pathEl.setAttribute("stroke", conn[2] ? "rgba(59, 130, 246, 0.25)" : "rgba(255, 255, 255, 0.08)");
-        pathEl.setAttribute("stroke-width", "2");
-        if (conn[2]) pathEl.setAttribute("stroke-dasharray", "4,4");
+
+        // Check if this connection is in active history
+        const activeItem = pathHistory.find(item => item.from === conn[0] && item.to === conn[1]);
+        if (activeItem) {
+          let markerId = 'arrow-active';
+          if (activeItem.color.includes('success')) markerId = 'arrow-success';
+          else if (activeItem.color.includes('error')) markerId = 'arrow-error';
+          else if (activeItem.color.includes('warning')) markerId = 'arrow-warning';
+          else if (activeItem.color.includes('purple')) markerId = 'arrow-purple';
+
+          pathEl.setAttribute("stroke", activeItem.color);
+          pathEl.setAttribute("marker-end", `url(#${markerId})`);
+          pathEl.classList.add('active-flow');
+          pathEl.style.stroke = activeItem.color;
+        } else {
+          pathEl.setAttribute("stroke", "rgba(255, 255, 255, 0.08)");
+          pathEl.setAttribute("marker-end", "url(#arrow)");
+        }
+        pathEl.setAttribute("stroke-width", activeItem ? "3" : "2");
         
         // Add custom identifier
         pathEl.id = `path-${conn[0]}-${conn[1]}`;
         svg.appendChild(pathEl);
+
+        // Add beautiful visual label for conditional branches
+        if (conn[2]) {
+          const midX = pts.x1 + dx * 0.5;
+          const midY = pts.y1 + dy * 0.5;
+
+          const label = document.createElement('div');
+          label.className = 'edge-label';
+          label.id = `label-${conn[0]}-${conn[1]}`;
+          label.style.left = `${midX}px`;
+          label.style.top = `${midY}px`;
+          label.innerText = conn[2].replace('_', ' ');
+          if (activeItem) {
+            label.classList.add('active');
+            label.style.borderColor = activeItem.color;
+            label.style.color = activeItem.color;
+          }
+          if (labelsContainer) labelsContainer.appendChild(label);
+        }
       });
-    }
-
-    function drawCurveBetweenElements(el1, el2) {
-      const rect1 = el1.getBoundingClientRect();
-      const rect2 = el2.getBoundingClientRect();
-      const containerRect = document.querySelector('.graph-panel').getBoundingClientRect();
-
-      const x1 = rect1.left + rect1.width / 2 - containerRect.left;
-      const y1 = rect1.top + rect1.height / 2 - containerRect.top;
-      const x2 = rect2.left + rect2.width / 2 - containerRect.left;
-      const y2 = rect2.top + rect2.height / 2 - containerRect.top;
-
-      if (y1 === y2) {
-        return `M ${x1} ${y1} L ${x2} ${y2}`;
-      } else {
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const cx1 = x1 + dx * 0.5;
-        const cy1 = y1;
-        const cx2 = x1 + dx * 0.5;
-        const cy2 = y2;
-        return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
-      }
     }
 
     // Resize handler to adjust paths dynamically
@@ -1176,13 +1495,11 @@
     let resolveHITLCallback = null;
 
     function resetSimulationUI() {
+      pathHistory = [];
       document.querySelectorAll('.node').forEach(node => {
         node.classList.remove('active', 'visited');
       });
-      document.querySelectorAll('.connections-svg path').forEach(path => {
-        path.setAttribute('stroke', path.getAttribute('stroke-dasharray') ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.08)');
-        path.setAttribute('stroke-width', '2');
-      });
+      drawInitialPaths();
       document.getElementById('console-logs').innerHTML = '';
       document.getElementById('hud-retry').style.display = 'none';
       document.getElementById('hitl-panel').classList.remove('show');
@@ -1206,11 +1523,11 @@
       document.getElementById(`node-${from}`).classList.add('visited');
       document.getElementById(`node-${to}`).classList.add('active');
 
-      const path = document.getElementById(`path-${from}-${to}`);
-      if (path) {
-        path.setAttribute('stroke', color);
-        path.setAttribute('stroke-width', '3');
-      }
+      // Record path history
+      pathHistory.push({ from, to, color });
+
+      // Trigger redraw to keep all edges docked and highlight active/visited segments
+      drawInitialPaths();
     }
 
     // Primary Execution Function
