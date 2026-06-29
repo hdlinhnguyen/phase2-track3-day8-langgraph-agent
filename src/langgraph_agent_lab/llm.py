@@ -12,18 +12,33 @@ Usage in nodes:
 from __future__ import annotations
 
 import os
+from typing import Any
 
 
-def get_llm(model: str | None = None, temperature: float = 0.0):
+def get_llm(model: str | None = None, temperature: float = 0.0) -> Any:  # noqa: ANN401
     """Create an LLM client from environment configuration.
 
     Checks for API keys in this order:
+    0. OPENROUTER_API_KEY → ChatOpenAI (configured for OpenRouter)
     1. GEMINI_API_KEY → ChatGoogleGenerativeAI
     2. OPENAI_API_KEY → ChatOpenAI
     3. ANTHROPIC_API_KEY → ChatAnthropic
 
     Override model with the `model` parameter or LLM_MODEL env var.
     """
+    if os.getenv("OPENROUTER_API_KEY"):
+        try:
+            from langchain_openai import ChatOpenAI
+        except ImportError as exc:
+            raise RuntimeError("Install: pip install langchain-openai") from exc
+        return ChatOpenAI(
+            model=model or os.getenv("LLM_MODEL", "google/gemini-2.5-flash"),
+            openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+            openai_api_base="https://openrouter.ai/api/v1",
+            max_tokens=1000,
+            temperature=temperature,
+        )
+
     if os.getenv("GEMINI_API_KEY"):
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI

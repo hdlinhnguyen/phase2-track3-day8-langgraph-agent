@@ -1,36 +1,4 @@
-"""Report generation helper.
-
-TODO(student): implement report rendering using MetricsReport data
-and the template in reports/lab_report_template.md.
-"""
-
-from __future__ import annotations
-
-from pathlib import Path
-
-from .metrics import MetricsReport
-
-
-def render_report(metrics: MetricsReport) -> str:
-    """Render a complete lab report from metrics data.
-
-    Returns a formatted markdown report string.
-    """
-    scenarios_table = "| Scenario | Expected route | Actual route | Success | Retries | Interrupts |\n|---|---|---|---:|---:|---:|\n"
-    for item in metrics.scenario_metrics:
-        scenarios_table += f"| {item.scenario_id} | {item.expected_route} | {item.actual_route} | {item.success} | {item.retry_count} | {item.interrupt_count} |\n"
-
-    # Dynamic Mermaid graph generation
-    try:
-        from .graph import build_graph
-
-        graph = build_graph()
-        mermaid_code = graph.get_graph().draw_mermaid()
-        graph_section = f"```mermaid\n{mermaid_code}\n```"
-    except Exception as e:
-        graph_section = f"Error generating graph diagram: {e}"
-
-    report = f"""# Day 08 Lab Report
+# Day 08 Lab Report
 
 ## 1. Team / student
 
@@ -56,7 +24,50 @@ We constructed a StateGraph with 11 nodes that handles support ticket classifica
 
 ### Graph Visualization
 
-{graph_section}
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	intake(intake)
+	classify(classify)
+	tool(tool)
+	evaluate(evaluate)
+	answer(answer)
+	clarify(clarify)
+	risky_action(risky_action)
+	approval(approval)
+	retry(retry)
+	dead_letter(dead_letter)
+	finalize(finalize)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> intake;
+	answer --> finalize;
+	approval -.-> clarify;
+	approval -.-> tool;
+	clarify --> finalize;
+	classify -.-> answer;
+	classify -.-> clarify;
+	classify -.-> retry;
+	classify -.-> risky_action;
+	classify -.-> tool;
+	dead_letter --> finalize;
+	evaluate -.-> answer;
+	evaluate -.-> retry;
+	intake --> classify;
+	retry -.-> dead_letter;
+	retry -.-> tool;
+	risky_action --> approval;
+	tool --> evaluate;
+	finalize --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+
+```
 
 ## 3. State schema
 
@@ -75,13 +86,22 @@ We constructed a StateGraph with 11 nodes that handles support ticket classifica
 ## 4. Scenario results
 
 **Summary Metrics:**
-- Total Scenarios: {metrics.total_scenarios}
-- Success Rate: {metrics.success_rate:.2%}
-- Avg Nodes Visited: {metrics.avg_nodes_visited:.2f}
-- Total Retries: {metrics.total_retries}
-- Total Interrupts: {metrics.total_interrupts}
+- Total Scenarios: 7
+- Success Rate: 100.00%
+- Avg Nodes Visited: 6.57
+- Total Retries: 4
+- Total Interrupts: 2
 
-{scenarios_table}
+| Scenario | Expected route | Actual route | Success | Retries | Interrupts |
+|---|---|---|---:|---:|---:|
+| S01_simple | simple | simple | True | 0 | 0 |
+| S02_tool | tool | tool | True | 0 | 0 |
+| S03_missing | missing_info | missing_info | True | 0 | 0 |
+| S04_risky | risky | risky | True | 0 | 1 |
+| S05_error | error | error | True | 3 | 0 |
+| S06_delete | risky | risky | True | 0 | 1 |
+| S07_dead_letter | error | error | True | 1 | 0 |
+
 
 ## 5. Failure analysis
 
@@ -103,12 +123,3 @@ In a production system, we would:
 1. Replace mock tool execution with actual REST API calls.
 2. Implement semantic routing fallback if the classifier experiences rate limits.
 3. Build a React/Streamlit interface to intercept and resume interrupted states for HITL approval.
-"""
-    return report
-
-
-def write_report(metrics: MetricsReport, output_path: str | Path) -> None:
-    """Write the rendered report to a file."""
-    path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_report(metrics), encoding="utf-8")
